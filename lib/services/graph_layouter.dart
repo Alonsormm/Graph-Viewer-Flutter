@@ -1,5 +1,3 @@
-// create a singleton class for the graph layouter
-
 import 'dart:math';
 
 import 'package:graph_viewer/classes/graph.dart';
@@ -7,97 +5,95 @@ import 'package:graph_viewer/classes/node.dart';
 import 'package:graph_viewer/classes/node_position.dart';
 
 class GraphLayouter {
-  List<NodePosition> springLayout(Graph graph) {
+  List<NodePosition> springLayout(Graph graph,
+      {int iterations = 200, double width = 400, double height = 400}) {
     final nodes = graph.nodes;
     final edges = graph.edges;
 
     final nodePositions = <NodePosition>[];
-
-    // Initialize the node positions to random values within a certain range.
     final random = Random();
-    for (final node in nodes) {
-      nodePositions.add(NodePosition(
-        id: node.id,
-        x: random.nextDouble() * 200,
-        y: random.nextDouble() * 200,
-      ));
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      final x = (random.nextDouble() * width) - (width / 2);
+      final y = (random.nextDouble() * height) - (height / 2);
+      nodePositions.add(NodePosition(id: node.id, x: x, y: y));
     }
 
-    // Constants used in the spring layout algorithm.
-    const springConstant = 0.2;
-    const damping = 0.5;
-    const tolerance = 1000;
+    const k = 0.1;
+    const k2 = 0.01;
 
-    // Run the spring layout algorithm until convergence.
-    var converged = false;
-    while (!converged) {
-      converged = true;
+    const threshold = 200.0;
 
-      // Calculate the displacement for each node.
-      for (final node in nodes) {
-        final nodePosition = nodePositions.firstWhere((nodePosition) {
-          return nodePosition.id == node.id;
+    const maxDistance = 400.0;
+
+    final forces = List<List<double>>.generate(
+        nodes.length, (_) => List<double>.filled(2, 0.0));
+
+    for (var i = 0; i < iterations; i++) {
+      for (var j = 0; j < nodes.length; j++) {
+        final fx = forces[j][0];
+        final fy = forces[j][1];
+        forces[j][0] = 0.0;
+        forces[j][1] = 0.0;
+        for (var k = 0; k < nodes.length; k++) {
+          if (j == k) continue;
+
+          final dx = nodePositions[k].x - nodePositions[j].x;
+          final dy = nodePositions[k].y - nodePositions[j].y;
+          final distance = sqrt(dx * dx + dy * dy);
+
+          if (distance < threshold) {
+            final f = k2 / distance;
+            forces[j][0] += f * dx;
+            forces[j][1] += f * dy;
+          }
+        }
+      }
+
+      for (var j = 0; j < edges.length; j++) {
+        final edge = edges[j];
+        final source = edge.source;
+        final indexOfSource = nodePositions.indexWhere((nodePosition) {
+          return nodePosition.id == source;
+        });
+        final sourcePosition = nodePositions.firstWhere((nodePosition) {
+          return nodePosition.id == source;
+        });
+        final target = edge.target;
+        final targetPosition = nodePositions.firstWhere((nodePosition) {
+          return nodePosition.id == target;
         });
 
-        // Calculate the displacement from the edges.
-        var displacementX = 0.0;
-        var displacementY = 0.0;
-        for (final edge in edges) {
-          if (edge.source == node.id) {
-            final targetNodePosition = nodePositions.firstWhere((nodePosition) {
-              return nodePosition.id == edge.target;
-            });
-            final springDisplacement = _calculateSpringDisplacement(
-                nodePosition, targetNodePosition, springConstant);
-            displacementX += springDisplacement.x;
-            displacementY += springDisplacement.y;
-          } else if (edge.target == node.id) {
-            final sourceNodePosition = nodePositions.firstWhere((nodePosition) {
-              return nodePosition.id == edge.source;
-            });
-            final springDisplacement = _calculateSpringDisplacement(
-                nodePosition, sourceNodePosition, springConstant);
-            displacementX += springDisplacement.x;
-            displacementY += springDisplacement.y;
-          }
-        }
+        final dx = targetPosition.x - sourcePosition.x;
+        final dy = targetPosition.y - sourcePosition.y;
+        final distance = sqrt(dx * dx + dy * dy);
 
-        // Calculate the displacement from the other nodes.
-        for (final otherNode in nodes) {
-          if (otherNode.id != node.id) {
-            final otherNodePosition = nodePositions.firstWhere((nodePosition) {
-              return nodePosition.id == otherNode.id;
-            });
-            final dx = nodePosition.x - otherNodePosition.x;
-            final dy = nodePosition.y - otherNodePosition.y;
-            final distance = sqrt(dx * dx + dy * dy);
-            displacementX += dx / distance;
-            displacementY += dy / distance;
-          }
-        }
+        final f = k * (distance - threshold);
+        forces[indexOfSource][0] += f * dx;
+        forces[indexOfSource][1] += f * dy;
+        forces[indexOfSource][0] -= f * dx;
+        forces[indexOfSource][1] -= f * dy;
+      }
 
-        // Update the node position.
-        final oldX = nodePosition.x;
-        final oldY = nodePosition.y;
-        nodePosition.x += displacementX * damping;
-        nodePosition.y += displacementY * damping;
-        if (converged &&
-            (nodePosition.x - oldX).abs() > tolerance &&
-            (nodePosition.y - oldY).abs() > tolerance) {
-          converged = false;
-        }
+      for (var j = 0; j < nodes.length; j++) {
+        final p = nodePositions[j];
+        p.x += forces[j][0];
+        p.y += forces[j][1];
+
+        p.x = p.x.clamp(-maxDistance, maxDistance);
+        p.y = p.y.clamp(-maxDistance, maxDistance);
       }
     }
 
     return nodePositions;
   }
 
-  List<NodePosition> circularLayout(Graph graph, double radius) {
+  List<NodePosition> circularLayout(Graph graph,
+      {double width = 400, double height = 400}) {
     final nodes = graph.nodes;
 
     final nodePositions = <NodePosition>[];
 
-    // Initialize the node positions to random values within a certain range.
     final random = Random();
     for (final node in nodes) {
       nodePositions.add(NodePosition(
@@ -107,8 +103,8 @@ class GraphLayouter {
       ));
     }
 
-    // Calculate the displacement for each node.
     final angle = 2 * pi / nodes.length;
+    final radius = min(width, height) / 2;
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
       final nodePosition = nodePositions.firstWhere((nodePosition) {
@@ -121,13 +117,13 @@ class GraphLayouter {
     return nodePositions;
   }
 
-  List<NodePosition> hierarchicalLayout(Graph graph, double initialYpos) {
+  List<NodePosition> hierarchicalLayout(Graph graph,
+      {double width = 400, double height = 400}) {
     final nodes = graph.nodes;
     final edges = graph.edges;
 
     final nodePositions = <NodePosition>[];
 
-    // Initialize the node positions to random values within a certain range.
     final random = Random();
     for (final node in nodes) {
       nodePositions.add(NodePosition(
@@ -137,73 +133,62 @@ class GraphLayouter {
       ));
     }
 
-    // the x can be - and +, the y can be - and +
-    // the root node is the one with no incoming edges
-    // the steps to do iteratively:
-    // 1. find the root node
-    // 2. place the root node in the top middle
-    // 3. find the children of the root node
-    // 4. place the children of the root node in the next level with y offset, and a separation between each node in x on the same level
-    // 5. repeat 3 and 4 until all nodes are placed
-    // 6. in each iteration chech if there is a node that already has a position
-
-    // find the root node
     final rootNodes = nodes.where((node) {
       return edges.every((edge) {
         return edge.target != node.id;
       });
-    }).toList();
-
-    // place the root node in the top middle
-    final rootNode = rootNodes.first;
-    final rootNodePosition = nodePositions.firstWhere((nodePosition) {
-      return nodePosition.id == rootNode.id;
     });
-    rootNodePosition.x = 0;
-    rootNodePosition.y = initialYpos;
 
-    // 3,4 and 5 using loop
-    var level = 1;
-    var nodesToPlace = rootNodes;
+    final rootNodesCount = rootNodes.length;
 
-    final visitedNodes = <String>{};
+    int currentLevel = 0;
+    Set<Node> nodesToPlace = rootNodes.toSet();
     while (nodesToPlace.isNotEmpty) {
-      final nextNodesToPlace = <Node>{};
-      final levelY = initialYpos + level * 100;
-      final levelX = 100 * nodesToPlace.length / 2;
-      var levelXOffset = -levelX;
+      final nodesToPlaceCount = nodesToPlace.length;
+      final xStep = width / (nodesToPlaceCount + 1);
+      double x = xStep;
       for (final node in nodesToPlace) {
         final nodePosition = nodePositions.firstWhere((nodePosition) {
           return nodePosition.id == node.id;
         });
-        nodePosition.x = levelXOffset;
-        nodePosition.y = levelY;
-        levelXOffset += 100;
-        visitedNodes.add(node.id);
-        final children = edges.where((edge) {
+        nodePosition.x = x - width / 2;
+        nodePosition.y = currentLevel * 100 - height / 2;
+        x += xStep;
+      }
+
+      final nextNodesToPlace = <Node>{};
+      for (final node in nodesToPlace) {
+        final connectedNodes = edges.where((edge) {
           return edge.source == node.id;
         }).map((edge) {
           return nodes.firstWhere((node) {
             return node.id == edge.target;
           });
-        }).toList();
-        nextNodesToPlace.addAll(children);
+        });
+        nextNodesToPlace.addAll(connectedNodes);
       }
-      nodesToPlace = nextNodesToPlace.toList();
-      level++;
+      nodesToPlace = nextNodesToPlace;
+      currentLevel++;
     }
+
     return nodePositions;
   }
 
-  Point<double> _calculateSpringDisplacement(
-      NodePosition source, NodePosition target, double springConstant) {
-    final dx = source.x - target.x;
-    final dy = source.y - target.y;
-    final distance = sqrt(dx * dx + dy * dy);
-    final displacementX =
-        (dx / distance) * (distance - springConstant) * springConstant;
-    final displacementY =
-        (dy / distance) * (distance - springConstant) * springConstant;
-    return Point(displacementX, displacementY);
+  List<NodePosition> randomLayout(Graph graph,
+      {double width = 100, double height = 100}) {
+    final nodes = graph.nodes;
+
+    final nodePositions = <NodePosition>[];
+
+    final random = Random();
+    for (final node in nodes) {
+      nodePositions.add(NodePosition(
+        id: node.id,
+        x: random.nextDouble() * width - width / 2,
+        y: random.nextDouble() * height - height / 2,
+      ));
+    }
+
+    return nodePositions;
   }
 }

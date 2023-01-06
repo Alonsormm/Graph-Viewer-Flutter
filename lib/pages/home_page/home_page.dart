@@ -25,7 +25,12 @@ class HomePage extends StatelessWidget {
             TextButton(
               onPressed: () {
                 final graph = _buildGraphForTest();
-                final springLayout = GraphLayouter().springLayout(graph);
+                final springLayout = GraphLayouter().springLayout(
+                  graph,
+                  iterations: 400,
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: MediaQuery.of(context).size.height * 0.8,
+                );
                 Navigator.of(context)
                     .push(MaterialPageRoute(builder: ((context) {
                   return GraphViewer(
@@ -39,7 +44,11 @@ class HomePage extends StatelessWidget {
             TextButton(
               onPressed: () {
                 final graph = _buildARandomGraphForTest(50);
-                final springLayout = GraphLayouter().circularLayout(graph, 200);
+                final springLayout = GraphLayouter().circularLayout(
+                  graph,
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: MediaQuery.of(context).size.height * 0.8,
+                );
                 Navigator.of(context)
                     .push(MaterialPageRoute(builder: ((context) {
                   return GraphViewer(
@@ -52,10 +61,12 @@ class HomePage extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                final graph = _buildATreeGraphForTest(5);
-                print(-(MediaQuery.of(context).size.height / 2));
+                final graph = _buildATreeGraphForTest(6);
                 final springLayout = GraphLayouter().hierarchicalLayout(
-                    graph, -(MediaQuery.of(context).size.height / 2));
+                  graph,
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: MediaQuery.of(context).size.height * 0.8,
+                );
                 Navigator.of(context)
                     .push(MaterialPageRoute(builder: ((context) {
                   return GraphViewer(
@@ -65,6 +76,25 @@ class HomePage extends StatelessWidget {
                 })));
               },
               child: const Text('Hierarchical Layout'),
+            ),
+            // random layout button
+            TextButton(
+              onPressed: () {
+                final graph = _buildARandomGraphForTest(50);
+                final randomLayout = GraphLayouter().randomLayout(
+                  graph,
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: MediaQuery.of(context).size.height * 0.8,
+                );
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: ((context) {
+                  return GraphViewer(
+                    graph: graph,
+                    nodePositions: randomLayout,
+                  );
+                })));
+              },
+              child: const Text('Random Layout'),
             ),
           ],
         ),

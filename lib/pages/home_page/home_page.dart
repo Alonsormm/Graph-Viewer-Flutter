@@ -96,6 +96,24 @@ class HomePage extends StatelessWidget {
               },
               child: const Text('Random Layout'),
             ),
+            TextButton(
+              onPressed: () {
+                final graph = _buildARandomGraphForTest(20);
+                final grid = GraphLayouter().gridLayout(
+                  graph,
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: MediaQuery.of(context).size.height * 0.8,
+                );
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: ((context) {
+                  return GraphViewer(
+                    graph: graph,
+                    nodePositions: grid,
+                  );
+                })));
+              },
+              child: const Text('Grid Layout'),
+            ),
           ],
         ),
       ),

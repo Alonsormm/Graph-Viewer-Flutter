@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:graph_viewer/classes/graph.dart';
 import 'package:graph_viewer/classes/node_position.dart';
+import 'package:graph_viewer/services/graph_layouter.dart';
 
 class GraphPainter extends CustomPainter {
   final Graph graph;
   final List<NodePosition> nodePositions;
   final Offset center;
   final double scale;
+  final bool isWeb;
+  final bool withLabels;
 
   GraphPainter({
     required this.graph,
     required this.nodePositions,
     this.center = Offset.zero,
     this.scale = 1,
+    this.isWeb = false,
+    this.withLabels = false,
   });
 
   @override
@@ -51,6 +56,7 @@ class GraphPainter extends CustomPainter {
     for (final nodePosition in nodePositions) {
       // changing the position based on the center and the scale
       canvas.drawCircle(nodePosition.position + center, 10 * scale, nodePaint);
+      if (!withLabels) continue;
       final textPainter = TextPainter(
         text: TextSpan(
           text: graph.nodes.firstWhere((node) {

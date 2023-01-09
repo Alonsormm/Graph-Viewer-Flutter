@@ -191,4 +191,45 @@ class GraphLayouter {
 
     return nodePositions;
   }
+
+  List<NodePosition> gridLayout(Graph graph,
+      {double width = 400, double height = 400}) {
+    final nodes = graph.nodes;
+
+    final nodePositions = <NodePosition>[];
+
+    final random = Random();
+    for (final node in nodes) {
+      nodePositions.add(NodePosition(
+        id: node.id,
+        x: random.nextDouble() * 100,
+        y: random.nextDouble() * 100,
+      ));
+    }
+
+    final sqrtNodesCount = sqrt(nodes.length);
+    final rows = sqrtNodesCount.ceil();
+    final columns = sqrtNodesCount.floor();
+
+    final xStep = width / (columns + 1);
+    final yStep = height / (rows + 1);
+
+    double x = xStep;
+    double y = yStep;
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      final nodePosition = nodePositions.firstWhere((nodePosition) {
+        return nodePosition.id == node.id;
+      });
+      nodePosition.x = x - width / 2;
+      nodePosition.y = y - height / 2;
+      x += xStep;
+      if (x > width) {
+        x = xStep;
+        y += yStep;
+      }
+    }
+
+    return nodePositions;
+  }
 }
